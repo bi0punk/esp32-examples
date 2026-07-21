@@ -1,0 +1,15 @@
+{
+  "relayPin": 16,
+  "relayActiveHigh": true,
+  "relayEnabled": true,
+  "useUltrasonic": false,
+  "trigPin": 17,
+  "echoPin": 18,
+  "triggerDistanceCm": 100,
+  "triggerDurationMs": 3000,
+  "useAutoCycle": false,
+  "cycleOnMs": 10000,
+  "cycleOffMs": 10000,
+  "useWebServer": true,
+  "useSerial": true
+}
