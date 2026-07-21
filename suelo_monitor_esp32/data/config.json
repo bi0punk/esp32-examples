@@ -1,0 +1,13 @@
+{
+  "sensorPin": 34,
+  "dryValue": 1000,
+  "wetValue": 400,
+  "sampleIntervalSec": 60,
+  "relayPins": [],
+  "useSerial": true,
+  "useHTTP": false,
+  "httpUrl": "http://192.168.1.100:8000/update_data",
+  "useWebServer": true,
+  "useNTP": true,
+  "utcOffset": -3
+}
