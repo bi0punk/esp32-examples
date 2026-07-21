@@ -1,0 +1,17 @@
+{
+  "displayType": 0,
+  "oledSDA": 21,
+  "oledSCL": 22,
+  "mode": 1,
+  "scrollSpeed": 50,
+  "scrollText": "ESP32 Display Demo",
+  "useWiFi": true,
+  "sismoIntervalMin": 5,
+  "sismoApiUrl": "http://192.168.1.100:8000/api/sismo/latest/",
+  "useSensor": false,
+  "dhtPin": 4,
+  "dhtType": 22,
+  "segDigits": 1,
+  "segCommonCathode": true,
+  "segPins": [2,3,4,5,6,7,8,9,10,11,12,13]
+}

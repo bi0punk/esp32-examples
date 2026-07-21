@@ -1,0 +1,210 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_TFTLCD.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <SD.h>
+#include <WiFiManager.h>
+#include "config.h"
+
+DisplayConfig cfg;
+Adafruit_SSD1306 *oled = nullptr;
+Adafruit_TFTLCD *tft = nullptr;
+
+// --- Bitmaps PROGMEM (extraidos de alvaro_henriquez, pikahcu, saitama) ---
+static const unsigned char PROGMEM pikachu_bmp[] = {
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x03,0xfe,0x00,0x00,0x00,0x0f,0xff,0x80,0x00,0x00,0x3f,0xff,
+  0xe0,0x00,0x00,0x7f,0xff,0xf0,0x00,0x00,0xff,0xff,0xf8,0x00,0x01,0xff,0xff,0xfc,
+  0x00,0x03,0xff,0xff,0xfe,0x00,0x07,0xfc,0x1f,0xff,0x00,0x0f,0xf0,0x07,0xff,0x80,
+  0x0f,0xe0,0x03,0xff,0x80,0x1f,0xc7,0xc1,0xff,0xc0,0x1f,0xcf,0xf1,0xff,0xc0,0x1f,
+  0xc7,0xf9,0xff,0xc0,0x1f,0x83,0xf9,0xff,0xc0,0x3f,0x81,0xf1,0xff,0xe0,0x3f,0x80,
+  0x01,0xff,0xe0,0x3f,0x80,0x01,0xff,0xe0,0x3f,0x80,0x01,0xff,0xe0,0x3f,0x80,0x01,
+  0xff,0xe0,0x1f,0x80,0x01,0xff,0xc0,0x1f,0xc0,0x03,0xff,0xc0,0x1f,0xc0,0x03,0xff,
+  0xc0,0x0f,0xe0,0x07,0xff,0x80,0x07,0xf0,0x0f,0xff,0x00,0x03,0xfe,0x3f,0xfe,0x00,
+  0x01,0xff,0xff,0xfc,0x00,0x00,0xff,0xff,0xf8,0x00,0x00,0x3f,0xff,0xe0,0x00,0x00,
+  0x07,0xff,0x00,0x00
+};
+
+static const unsigned char PROGMEM saitama_bmp[] = {
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x03,0xff,0x00,0x00,0x00,0x0f,0xff,0xc0,0x00,0x00,0x1f,0x81,
+  0xe0,0x00,0x00,0x3e,0x00,0x70,0x00,0x00,0xf8,0x00,0x1c,0x00,0x01,0xf0,0x00,0x0e,
+  0x00,0x03,0xc7,0xe0,0x07,0x00,0x07,0x9f,0xf8,0x03,0x80,0x07,0x3f,0xfe,0x01,0x80,
+  0x0e,0x7f,0xfe,0x00,0xc0,0x0e,0x7e,0x7e,0x00,0xc0,0x0c,0xfc,0x3e,0x00,0x60,0x1c,
+  0xf8,0x1e,0x00,0x60,0x1c,0xf8,0x1e,0x00,0x60,0x1c,0xf8,0x1e,0x00,0x60,0x1c,0xf8,
+  0x00,0x00,0x60,0x0c,0xfc,0x00,0x00,0x60,0x0e,0x7e,0x00,0x00,0x40,0x0e,0x7f,0x00,
+  0x00,0xc0,0x07,0x3f,0x80,0x01,0x80,0x07,0x9f,0xe0,0x03,0x80,0x03,0xc7,0xfc,0x07,
+  0x00,0x01,0xf0,0x3f,0x8e,0x00,0x00,0xf8,0x0f,0xfc,0x00,0x00,0x3e,0x07,0xf8,0x00,
+  0x00,0x1f,0x83,0xf0,0x00,0x00,0x0f,0xff,0xc0,0x00,0x00,0x03,0xff,0x00,0x00
+};
+
+// --- OLED Modes ---
+
+void modeBitmap() {
+  oled->clearDisplay();
+  oled->drawBitmap(0, 0, pikachu_bmp, 128, 64, SSD1306_WHITE);
+  oled->display();
+}
+
+void modeEffects() {
+  static int step = 0;
+  oled->clearDisplay();
+  switch ((step / 50) % 5) {
+    case 0: // lines
+      for (int i = 0; i < 128; i += 10) {
+        oled->drawLine(i, 0, 127 - i, 63, SSD1306_WHITE);
+      }
+      break;
+    case 1: // circles
+      for (int r = 20; r > 0; r -= 5) {
+        oled->drawCircle(64, 32, r, SSD1306_WHITE);
+      }
+      break;
+    case 2: // rects
+      for (int i = 0; i < 64; i += 8) {
+        oled->drawRect(64 - i, 32 - i / 2, i * 2, i, SSD1306_WHITE);
+      }
+      break;
+    case 3: // sweep
+      oled->fillRect(0, 0, (step % 128), 64, SSD1306_WHITE);
+      break;
+    case 4: // text sizes
+      oled->setCursor(0, 0);
+      oled->setTextSize(1); oled->println("Size 1");
+      oled->setTextSize(2); oled->println("Size 2");
+      break;
+  }
+  oled->display();
+  step++;
+}
+
+void modeScroll() {
+  static int offset = 0;
+  int w = strlen(cfg.scrollText.c_str()) * 6;
+  oled->clearDisplay();
+  oled->setTextSize(2);
+  oled->setTextColor(SSD1306_WHITE);
+  oled->setCursor(128 - offset, 20);
+  oled->println(cfg.scrollText.c_str());
+  oled->display();
+  offset = (offset + 1) % (w + 128);
+  delay(cfg.scrollSpeed);
+}
+
+void modeSensor() {
+  if (!cfg.useSensor) {
+    oled->clearDisplay();
+    oled->setCursor(0, 0);
+    oled->println("Sensor disabled");
+    oled->display();
+    return;
+  }
+  // DHT placeholder - connect actual sensor
+  oled->clearDisplay();
+  oled->setCursor(0, 0);
+  oled->println("Temp: --.- C");
+  oled->println("Hum:  --.- %");
+  oled->display();
+}
+
+void modeSismo() {
+  if (WiFi.status() != WL_CONNECTED) {
+    oled->clearDisplay();
+    oled->setCursor(0, 0);
+    oled->println("No WiFi");
+    oled->display();
+    return;
+  }
+  HTTPClient http;
+  http.begin(cfg.sismoApiUrl);
+  int code = http.GET();
+  if (code > 0) {
+    String payload = http.getString();
+    JsonDocument doc;
+    deserializeJson(doc, payload);
+    oled->clearDisplay();
+    oled->setCursor(0, 0);
+    oled->println(doc["fecha_local"].as<String>());
+    oled->setCursor(0, 16);
+    oled->print("Mag: ");
+    oled->println(doc["magnitud"].as<float>(), 1);
+    oled->setCursor(0, 32);
+    oled->print("Prof: ");
+    oled->print(doc["profundidad"].as<float>());
+    oled->println("km");
+    oled->setCursor(0, 48);
+    String ubi = doc["ubicacion"].as<String>();
+    if (ubi.length() > 18) ubi = ubi.substring(0, 18);
+    oled->println(ubi);
+    oled->display();
+  }
+  http.end();
+}
+
+// --- TFT Mode ---
+static void tftModeBMP() {
+  if (!tft) return;
+  tft->fillScreen(BLACK);
+  tft->setTextColor(WHITE);
+  tft->setTextSize(2);
+  tft->setCursor(10, 60);
+  tft->println("TFT BMP mode");
+  tft->setCursor(10, 80);
+  tft->println("SD card required");
+}
+
+// --- Main dispatcher ---
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  loadDisplayConfig(cfg);
+
+  if (cfg.useWiFi) {
+    WiFiManager wm;
+    wm.setConfigPortalTimeout(120);
+    wm.autoConnect("ESP32-Display");
+  }
+
+  if (cfg.displayType == 0) {
+    Wire.begin(cfg.oledSDA, cfg.oledSCL);
+    oled = new Adafruit_SSD1306(128, 64, &Wire, -1);
+    if (!oled->begin(SSD1306_SWITCHCAPVCC, cfg.oledAddr)) {
+      Serial.println("[OLED] No encontrado");
+      oled = nullptr;
+    } else {
+      oled->clearDisplay();
+      oled->display();
+    }
+  } else if (cfg.displayType == 1) {
+    tft = new Adafruit_TFTLCD(A3, A2, A1, A0, A4);
+    tft->reset();
+    uint16_t id = tft->readID();
+    tft->begin(id);
+    tft->setRotation(1);
+    tft->fillScreen(BLACK);
+  }
+
+  Serial.printf("[display] Modo: %d\n", cfg.mode);
+}
+
+void loop() {
+  if (!oled && cfg.displayType == 0 && cfg.mode != MODE_TFT_BMP) {
+    delay(1000);
+    return;
+  }
+
+  switch (cfg.mode) {
+    case MODE_BITMAP:   modeBitmap();  delay(30000); break;
+    case MODE_EFFECTS:  modeEffects(); delay(30);    break;
+    case MODE_SCROLL:   modeScroll();                 break;
+    case MODE_SENSOR:   modeSensor();  delay(5000);  break;
+    case MODE_SISMO:    modeSismo();   delay(cfg.sismoIntervalMin * 60000); break;
+    case MODE_TFT_BMP:  tftModeBMP();  delay(30000); break;
+    default:            modeEffects(); delay(30);    break;
+  }
+}
