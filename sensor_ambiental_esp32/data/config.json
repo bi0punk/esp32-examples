@@ -1,0 +1,16 @@
+{
+  "useDHT": true,
+  "dhtPin": 4,
+  "dhtType": 22,
+  "useSHT31": false,
+  "useSHTC3": false,
+  "useMQ135": false,
+  "mq135Pin": 34,
+  "useOLED": false,
+  "oledSDA": 21,
+  "oledSCL": 22,
+  "sampleIntervalSec": 5,
+  "useHTTP": false,
+  "httpUrl": "http://192.168.1.100:8000/sensor",
+  "useSerial": true
+}
